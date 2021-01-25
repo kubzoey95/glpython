@@ -1,0 +1,6 @@
+numpy
+PyOpenGL
+glfw
+pillow
+pyrr
+pygame
