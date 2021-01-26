@@ -1,6 +1,5 @@
 import pyrr
-from typing import Tuple, List, Union, Set
-from numpy import float32
+from typing import Tuple, Union, Set
 
 
 class GameObject:
@@ -77,24 +76,14 @@ class GameObject:
         if child.parent == self:
             child.parent = None
 
-    # def __get_descendants(self, curr_descendants):
-    #     descendants = set()
-    #     for child in self.__children.difference(curr_descendants):
-    #         child_desc = child.__get_descendants(descendants)
-    #         descendants.union(child_desc)
-    #     return descendants
-
-    # def get_descendants(self):
-    #     descendants = {self}
-    #     descendants.union(self.children)
-    #     for child in self.children:
-    #         child_desc = child.__get_descendants(descendants)
-    #         descendants.union(child_desc)
-    #     descendants.remove(self)
-    #     return descendants
-
     def get_descendants(self):
-        return {desc for child in self.children for desc in child.get_descendants() | self.children}
+        descendants = list()
+        unchecked_children = list(self.children)
+        while unchecked_children:
+            child = unchecked_children.pop()
+            descendants.append(child)
+            unchecked_children.extend(child.children)
+        return set(descendants)
 
     @property
     def translation(self):
