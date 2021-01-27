@@ -1,5 +1,6 @@
 import pyrr
-from typing import Tuple, Union, Set
+from typing import Tuple, Union, Set, List, Dict
+from my_engine.component import Component
 
 
 class GameObject:
@@ -21,6 +22,27 @@ class GameObject:
         self.__children: Set[GameObject] = set()
         self.__parent: Union[GameObject, None] = None
         self.name = name
+
+        self.__components: Dict[str, Component] = {}
+
+    def start(self):
+        for component in self.__components.values():
+            component.start()
+
+    def update(self):
+        for component in self.__components.values():
+            component.update()
+
+    @property
+    def components(self):
+        return self.__components
+
+    def add_component(self, component: Component):
+        self.__components[component.name] = component
+
+    def remove_component(self, component_name: str):
+        if component_name in self.__components:
+            del self.__components[component_name]
 
     def __update_matrices(self):
         if not self.__trans_matrix_valid:
