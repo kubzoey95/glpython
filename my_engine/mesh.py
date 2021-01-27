@@ -1,13 +1,12 @@
-from my_engine.game_object import GameObject
-from typing import Tuple, Union, Set
+from my_engine.component import Component
 import numpy as np
+import meshio
 
 
-class Mesh(GameObject):
-    def __init__(self, translation: Tuple[float] = (0, 0, 0), rotation: Tuple[float] = (0, 0, 0),
-                 scale: Tuple[float] = (1, 1, 1), name: str = "Untitled"):
-        super().__init__(translation, rotation, scale, name)
+class Mesh(Component):
+    def __init__(self, vertices=np.array([]), obj=None):
+        super().__init__('Mesh', obj)
+        self.vertices: np.ndarray = vertices
 
-    @staticmethod
-    def get_vertices():
-        return np.array([])
+    def load_from_file(self, file):
+        mesh_obj = meshio.read(file)
