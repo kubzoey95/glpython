@@ -4,3 +4,4 @@ glfw
 pillow
 pyrr
 pygame
+meshio
