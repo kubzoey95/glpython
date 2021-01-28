@@ -5,7 +5,7 @@ import numpy as np
 from OpenGL.GL.shaders import compileProgram, compileShader
 from OpenGL.GL import GL_VERTEX_SHADER, GL_FRAGMENT_SHADER, GL_ACTIVE_ATTRIBUTES, \
     glGetProgramiv, glGetActiveAttrib, GLuint, GLenum, GLint, GLsizei, GLchar, glGetActiveUniform, GL_ACTIVE_UNIFORMS, \
-    glGetUniformLocation, glGetAttribLocation, GL_GEOMETRY_SHADER
+    glGetUniformLocation, glGetAttribLocation, GL_GEOMETRY_SHADER, glUseProgram
 
 
 class Material(Component):
@@ -18,8 +18,8 @@ class Material(Component):
         self.__attributes: Dict[str, int] = {}
         self.__uniforms: Dict[str, int] = {}
 
-        self.__attributes_values: Union[NamedTuple[np.ndarray], None] = None
-        self.__uniforms_values: Union[NamedTuple[np.ndarray], None] = None
+        self.__attributes_values: Union[Dict[str, np.ndarray]] = {}
+        self.__uniforms_values: Union[Dict[str, np.ndarray]] = {}
 
         if self.__vertex_shader and self.__fragment_shader:
             program = compileProgram(
@@ -33,17 +33,17 @@ class Material(Component):
             for u in range(num_active_attribs):
                 name, size, type_ = glGetActiveAttrib(program, u)
                 location = glGetAttribLocation(program, name)
-                self.__attributes[name.decode("utf-8")] = location
-
-            self.__attributes_values = namedtuple('ShaderAttributes', self.__attributes.keys())(*[None for _ in range(len(self.__attributes))])
+                name = name.decode("utf-8")
+                self.__attributes[name] = location
+                self.__attributes_values[name] = np.array([])
 
             num_active_uniforms = glGetProgramiv(program, GL_ACTIVE_UNIFORMS)
             for u in range(num_active_uniforms):
                 name, size, type_ = glGetActiveUniform(program, u)
                 location = glGetUniformLocation(program, name)
-                self.__uniforms[name.decode("utf-8")] = location
-
-            self.__uniforms_values = namedtuple('ShaderUniforms', self.__uniforms.keys())(*[None for _ in range(len(self.__uniforms))])
+                name = name.decode("utf-8")
+                self.__uniforms[name] = location
+                self.__uniforms_values[name] = np.array([])
 
     @property
     def attributes(self):
@@ -52,3 +52,6 @@ class Material(Component):
     @property
     def uniforms(self):
         return self.__uniforms_values
+
+    def use_program(self):
+        glUseProgram(self.__program)
