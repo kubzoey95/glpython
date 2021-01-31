@@ -47,11 +47,11 @@ class Material(Component):
 
     @property
     def attributes(self):
-        return self.__attributes_values
+        return self.__attributes
 
     @property
     def uniforms(self):
-        return self.__uniforms_values
+        return self.__uniforms
 
     def use_program(self):
         glUseProgram(self.__program)

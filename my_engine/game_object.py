@@ -10,14 +10,17 @@ class GameObject:
         self.__rotation = rotation
         self.__scale = scale
 
-        self.__trans_matrix = pyrr.matrix44.create_from_translation(translation)
+        self.__trans_matrix = pyrr.matrix44.create_from_translation(pyrr.Vector3(translation))
         self.__trans_matrix_valid = True
-        self.__rotation_matrix = pyrr.matrix44.create_from_eulers(rotation)
+        self.__rotation_matrix = pyrr.matrix44.create_from_eulers(pyrr.Vector3(rotation))
         self.__rotation_matrix_valid = True
-        self.__scale_matrix = pyrr.matrix44.create_from_scale(scale)
+        self.__scale_matrix = pyrr.matrix44.create_from_scale(pyrr.Vector3(scale))
         self.__scale_matrix_valid = True
 
         self.__matrix = self.__trans_matrix @ self.__rotation_matrix @ self.__scale_matrix
+
+        self.__inverse_matrix = pyrr.matrix44.inverse(self.__matrix)
+        self.__inverse_matrix_valid = True
 
         self.__children: Set[GameObject] = set()
         self.__parent: Union[GameObject, None] = None
@@ -60,16 +63,26 @@ class GameObject:
         if self.__trans_matrix_valid and self.__rotation_matrix_valid and self.__scale_matrix_valid:
             return self.__matrix
         else:
+            self.__inverse_matrix_valid = False
             self.__update_matrices()
             self.__matrix = self.__trans_matrix @ self.__rotation_matrix @ self.__scale_matrix
             return self.__matrix
+
+    @property
+    def inverse_matrix(self):
+        if self.__inverse_matrix_valid and self.__trans_matrix_valid and self.__rotation_matrix_valid and self.__scale_matrix_valid:
+            return self.__inverse_matrix
+        else:
+            self.__inverse_matrix = pyrr.matrix44.inverse(self.matrix)
+            self.__inverse_matrix_valid = True
+            return self.__inverse_matrix
 
     @property
     def transformation_matrix(self):
         if self.__parent is None:
             return self.matrix
         else:
-            return self.__parent.matrix @ self.matrix
+            return self.__parent.transformation_matrix @ self.matrix
 
     @property
     def parent(self):
