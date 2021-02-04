@@ -153,7 +153,7 @@ while running:
     # glUniformMatrix4fv(rotation_loc, 1, GL_FALSE, rot_x @ rot_y)
     glUniformMatrix4fv(rotation_loc, 1, GL_FALSE, rot_x * rot_y)
 
-    glDrawElements(GL_TRIANGLES, len(indices), GL_UNSIGNED_INT, None)
+    glDrawElements(GL_TRIANGLES, len(indices), GL_UNSIGNED_INT, ctypes.c_void_p(0))
 
     pygame.display.flip()
 
