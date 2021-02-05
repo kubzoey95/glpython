@@ -1,6 +1,7 @@
 from my_engine.component import Component
 from my_engine.material import Material, TYPE_TO_LENGTH
 from my_engine.mesh import Mesh
+from my_engine.texture import Texture
 from my_engine.camera import Camera
 from typing import Tuple, Union
 from collections import defaultdict
@@ -31,6 +32,7 @@ class Renderer(Component):
         self.__data_for_render = {}
         self.__vertices = np.array([])
         self.__indices = np.array([])
+        self.__texture_buffer = None
 
     @property
     def active_camera(self):
@@ -68,8 +70,9 @@ class Renderer(Component):
             material = obj[0].components['Material']
             mesh = obj[0].components['Mesh']
             vertices.extend(list(mesh.get_data_positioned_to_material(material)))
-            object_data = {'pointer': len(indices), 'length': mesh.indices.size, 'matrix': obj[1], 'object': obj[0]}
-            indices.extend(list(mesh.indices.flatten() + verts_len))
+            object_data = {'pointer': len(vertices), 'length': mesh.vertices.size, 'matrix': obj[1], 'object': obj[0],
+                           'indices': mesh.indices.flatten() + verts_len}
+            # indices.extend(list(mesh.indices.flatten() + verts_len))
             verts_len += len(mesh.vertices)
             if 'Texture' in obj[0].components:
                 object_data['texture'] = obj[0].components['Texture']
@@ -87,7 +90,8 @@ class Renderer(Component):
         glBufferData(GL_ARRAY_BUFFER, self.__vertices.nbytes, self.__vertices, GL_STATIC_DRAW)
 
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, self.__EBO)
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, self.__indices.nbytes, self.__indices, GL_STATIC_DRAW)
+
+        self.__texture_buffer = Texture.get_buffer()
 
     def update(self):
         for material, data in self.__data_for_render.items():
@@ -104,7 +108,11 @@ class Renderer(Component):
             for dat in data:
                 for uniform, index in material.uniforms.items():
                     if material.uniforms_types[uniform] == GL_SAMPLER_2D:
-                        pass
+                        if 'Texture' in dat['object'].components:
+                            texture = dat['object'].components['Texture']
+
+                            texture.load_settings()
+                            texture.send_texture()
                     elif material.model_matrix_name == uniform:
                         glUniformMatrix4fv(index, 1, GL_FALSE, dat['matrix'])
                     elif material.view_matrix_name == uniform:
@@ -112,5 +120,8 @@ class Renderer(Component):
                     elif material.projection_matrix_name == uniform:
                         pass
                 # glDrawElements(GL_TRIANGLES, dat['length'], GL_UNSIGNED_INT, ctypes.c_void_p(dat['pointer'] * 0))
-                glDrawElements(GL_TRIANGLES, len(self.__indices), GL_UNSIGNED_INT, None)
+                flatten_indices = dat['indices']
+                glBufferData(GL_ELEMENT_ARRAY_BUFFER, flatten_indices.nbytes, flatten_indices, GL_STATIC_DRAW)
+                # glDrawElements(GL_TRIANGLES, len(flatten_indices), GL_UNSIGNED_INT, None)
+                glDrawRangeElements(GL_TRIANGLES, dat['pointer'], dat['pointer'] + dat['length'], len(flatten_indices), GL_UNSIGNED_INT, None)
                 # glDrawRangeElements(GL_TRIANGLES, len(self.__indices), GL_UNSIGNED_INT, None)

@@ -12,8 +12,8 @@ class Texture(Component):
         super().__init__('Texture', obj)
         self.__settings = settings
         self.__image = image
-        self.__image_width, self.__image_height = image.get_rect().size
-        self.__img_data = pygame.image.tostring(image, "RGBA")
+        self.__image_width, self.__image_height = image.get_rect().size if image else (None, None)
+        self.__img_data = image and pygame.image.tostring(image, "RGBA")
 
     def load_from_file(self, path):
         image = pygame.image.load(path)
