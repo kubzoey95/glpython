@@ -28,6 +28,8 @@ class GameObject:
 
         self.__components: Dict[str, Component] = {}
 
+        self.__transformation_matrix = None
+
     def start(self):
         for component in self.__components.values():
             component.start()
@@ -65,8 +67,24 @@ class GameObject:
         else:
             self.__inverse_matrix_valid = False
             self.__update_matrices()
-            self.__matrix = self.__trans_matrix @ self.__rotation_matrix @ self.__scale_matrix
+            # self.__matrix = self.__trans_matrix @ self.__rotation_matrix @ self.__scale_matrix
+            self.__matrix = self.__scale_matrix @ self.__rotation_matrix @ self.__trans_matrix
             return self.__matrix
+
+    def get_real_transformation(self):
+        return self.__transformation_matrix
+
+    def invalidate_transformation(self):
+        self.__transformation_matrix = None
+
+    def invalidate_children_transformation(self):
+        self.invalidate_transformation()
+        to_invalidate = list(self.__children)
+        while to_invalidate:
+            curr_child = to_invalidate.pop()
+            if curr_child.get_real_transformation() is not None:
+                curr_child.invalidate_transformation()
+                to_invalidate.extend(curr_child.children)
 
     @property
     def inverse_matrix(self):
@@ -81,8 +99,11 @@ class GameObject:
     def transformation_matrix(self):
         if self.__parent is None:
             return self.matrix
+        elif self.__transformation_matrix is not None:
+            return self.__transformation_matrix
         else:
-            return self.__parent.transformation_matrix @ self.matrix
+            self.__transformation_matrix = self.matrix @ self.__parent.transformation_matrix
+            return self.__transformation_matrix
 
     @property
     def parent(self):
@@ -126,6 +147,7 @@ class GameObject:
 
     @translation.setter
     def translation(self, val):
+        self.invalidate_children_transformation()
         self.__translation = val
         self.__trans_matrix_valid = False
 
@@ -135,6 +157,7 @@ class GameObject:
 
     @scale.setter
     def scale(self, val):
+        self.invalidate_children_transformation()
         self.__scale = val
         self.__scale_matrix_valid = False
 
@@ -144,5 +167,6 @@ class GameObject:
 
     @rotation.setter
     def rotation(self, val):
+        self.invalidate_children_transformation()
         self.__rotation = val
         self.__rotation_matrix_valid = False

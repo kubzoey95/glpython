@@ -21,4 +21,4 @@ class Camera(Component):
 
     @property
     def matrix(self):
-        return self.__projection @ self.__obj.inverse_matrix
+        return self.__obj.inverse_matrix @ self.__projection

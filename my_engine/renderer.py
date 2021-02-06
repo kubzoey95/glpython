@@ -47,7 +47,7 @@ class Renderer(Component):
         unchecked_children = [child1 for child in self.obj.children for child1 in child.children]
         while unchecked_children:
             child = unchecked_children.pop()
-            descendants[child] = descendants[child.parent] @ child.matrix
+            descendants[child] = child.matrix @ descendants[child.parent]
             unchecked_children.extend(child.children)
         return descendants
 
@@ -114,7 +114,7 @@ class Renderer(Component):
                             texture.load_settings()
                             texture.send_texture()
                     elif material.model_matrix_name == uniform:
-                        glUniformMatrix4fv(index, 1, GL_FALSE, dat['matrix'])
+                        glUniformMatrix4fv(index, 1, GL_FALSE, dat['object'].transformation_matrix)
                     elif material.view_matrix_name == uniform:
                         pass
                     elif material.projection_matrix_name == uniform:
