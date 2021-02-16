@@ -1,14 +1,15 @@
 import pyrr
 from typing import Tuple, Union, Set, List, Dict
 from my_engine.component import Component
+import numpy as np
 
 
 class GameObject:
     def __init__(self, translation: Tuple[float] = (0, 0, 0), rotation: Tuple[float] = (0, 0, 0),
                  scale: Tuple[float] = (1, 1, 1), name: str = "Untitled"):
-        self.__translation = translation
-        self.__rotation = rotation
-        self.__scale = scale
+        self.__translation = np.array(translation, dtype=np.float32)
+        self.__rotation = np.array(rotation, dtype=np.float32)
+        self.__scale = np.array(scale, dtype=np.float32)
 
         self.__trans_matrix = pyrr.matrix44.create_from_translation(pyrr.Vector3(translation))
         self.__trans_matrix_valid = True

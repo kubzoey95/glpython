@@ -7,7 +7,7 @@ DEFAULT_RATIO = 1280/720
 
 class Camera(Component):
     def __init__(self, obj,
-                 projection: np.ndarray = pyrr.matrix44.create_perspective_projection_matrix(45, DEFAULT_RATIO, 0.1, 100)):
+                 projection: np.ndarray = pyrr.matrix44.create_perspective_projection_matrix(45, DEFAULT_RATIO, 0.1, 1000)):
         super().__init__('Camera', obj)
         self.__projection = projection
 

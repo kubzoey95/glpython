@@ -5,6 +5,7 @@ import meshio
 from typing import Union, NamedTuple, Dict
 from collections import namedtuple
 import re
+from math import inf
 
 
 class Mesh(Component):
@@ -13,7 +14,8 @@ class Mesh(Component):
                  uniform_data: Union[Dict[str, np.ndarray], None] = None, obj=None,
                  vertices_mapping='vertices', indices_mapping='indices',
                  point_data_mapping: Union[Dict[str, str], None] = None,
-                 uniform_data_mapping: Union[Dict[str, str], None] = None):
+                 uniform_data_mapping: Union[Dict[str, str], None] = None,
+                 instanced_point_data: Union[Dict[str, np.ndarray], None] = None):
         super().__init__('Mesh', obj)
         self.__vertices: np.ndarray = vertices
         self.__vertices_mapping = vertices_mapping
@@ -29,7 +31,11 @@ class Mesh(Component):
         if point_data_mapping is None:
             self.__point_data_mapping = {}
 
-        self.__uniform_data = uniform_data
+        if uniform_data is None:
+            self.__uniform_data = {}
+
+        if instanced_point_data is None:
+            self.__instanced_point_data = {}
 
         self.__uniform_data_mapping = uniform_data_mapping
 
@@ -43,7 +49,7 @@ class Mesh(Component):
         # max_pos = [point_data[1] for point_data in point_data_pos]
         # max_pos.append(vertices_pos)
         # max_pos = max(max_pos)
-        pos_array = np.zeros((len(self.__vertices), len(self.__vertices[0]) + sum((len(val[0]) for _, val in self.__point_data.items()))))
+        pos_array = np.zeros((len(self.__vertices), len(self.__vertices[0]) + sum((len(val[0]) for key, val in self.__point_data.items()))))
         # pos_array[vertices_pos] = self.__vertices
         pointer = 0
         for key, val in point_data_pos:
@@ -51,6 +57,32 @@ class Mesh(Component):
             pointer = val.shape[1]
 
         return pos_array.flatten()
+
+    def get_instanced_data_positioned_to_material(self, material: Material, flattened=True):
+        point_data_pos = []
+        min_length = inf
+        data2length = {}
+        for key, val in self.__instanced_point_data.items():
+            if callable(val):
+                value = val()
+            else:
+                value = val
+            if len(value) < min_length:
+                min_length = len(value)
+            data2length[key] = len(value[0])
+            point_data_pos.append([material.attributes[self.__point_data_mapping[key]], value])
+
+        point_data_pos.sort(key=lambda x: x[0])
+
+        pos_array = np.zeros((min_length, sum((val for key, val in data2length.items()))))
+        pointer = 0
+        for key, val in point_data_pos:
+            pos_array[:, pointer:pointer + val.shape[1]] = val
+            pointer = val.shape[1]
+
+        if flattened:
+            return pos_array.flatten()
+        return pos_array
 
     def load_from_file(self, file):
         verts, uvs, normals, indices = self.load_obj_file(file)
@@ -77,32 +109,33 @@ class Mesh(Component):
             line = f.readline()
             while line:
                 values = line.split()
-                if values[0] == 'v':
-                    vertices.append(tuple(float(num) for num in values[1:]))
-                elif values[0] == 'vt':
-                    uvs.append(tuple(float(num) for num in values[1:]))
-                elif values[0] == 'vn':
-                    normals.append(tuple(float(num) for num in values[1:]))
-                elif values[0] == 'f':
-                    for value in values[1:]:
-                        index = [None, None, None]
-                        for i, val in enumerate(value.split('/')):
-                            if val.isdigit():
-                                index[i] = int(val) - 1
+                if values:
+                    if values[0] == 'v':
+                        vertices.append(tuple(float(num) for num in values[1:]))
+                    elif values[0] == 'vt':
+                        uvs.append(tuple(float(num) for num in values[1:]))
+                    elif values[0] == 'vn':
+                        normals.append(tuple(float(num) for num in values[1:]))
+                    elif values[0] == 'f':
+                        for value in values[1:]:
+                            index = [None, None, None]
+                            for i, val in enumerate(value.split('/')):
+                                if val.isdigit():
+                                    index[i] = int(val) - 1
 
-                        index = tuple(index)
+                            index = tuple(index)
 
-                        if index not in indices:
-                            new_indices.append(pos)
-                            new_vertices.append(vertices[index[0]])
-                            if index[1] is not None:
-                                new_uvs.append(uvs[index[1]])
-                            if index[2] is not None:
-                                new_normals.append(normals[index[2]])
-                            indices[index] = pos
-                            pos += 1
-                        else:
-                            new_indices.append(indices[index])
+                            if index not in indices:
+                                new_indices.append(pos)
+                                new_vertices.append(vertices[index[0]])
+                                if index[1] is not None:
+                                    new_uvs.append(uvs[index[1]])
+                                if index[2] is not None:
+                                    new_normals.append(normals[index[2]])
+                                indices[index] = pos
+                                pos += 1
+                            else:
+                                new_indices.append(indices[index])
                 line = f.readline()
 
         return new_vertices, new_uvs, new_normals, new_indices
@@ -114,6 +147,18 @@ class Mesh(Component):
     @property
     def indices(self):
         return self.__indices
+
+    @property
+    def uniform_data(self):
+        return self.__uniform_data
+
+    @property
+    def uniform_data_mapping(self):
+        return self.__uniform_data_mapping
+
+    @property
+    def instanced_point_data(self):
+        return self.__instanced_point_data
 
     @property
     def point_data(self):

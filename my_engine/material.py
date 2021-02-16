@@ -29,7 +29,8 @@ UNIFORM_TYPE_TO_FUNC = {
 class Material(Component):
     def __init__(self, vertex_shader: Union[str, None] = None, fragment_shader: Union[str, None] = None,
                  geometry_shader: Union[str, None] = None, view_matrix_name: str = 'view_matrix',
-                 projection_matrix_name: str = 'projection_matrix', model_matrix_name: str = 'model_matrix', obj=None):
+                 projection_matrix_name: str = 'projection_matrix', model_matrix_name: str = 'model_matrix',
+                 instanced_attribs=(), obj=None):
         super().__init__('Material', obj)
         self.__vertex_shader = vertex_shader
         self.__fragment_shader = fragment_shader
@@ -39,6 +40,8 @@ class Material(Component):
         self.view_matrix_name = view_matrix_name
         self.projection_matrix_name = projection_matrix_name
         self.model_matrix_name = model_matrix_name
+
+        self.__instanced_attribs = set(instanced_attribs)
 
         self.__attributes_values: Union[Dict[str, np.ndarray]] = {}
         self.__uniforms_values: Union[Dict[str, np.ndarray]] = {}
@@ -70,6 +73,10 @@ class Material(Component):
                 self.__uniforms_types[name] = type_
                 self.__uniforms[name] = location
                 self.__uniforms_values[name] = np.array([])
+
+    @property
+    def instanced_attribs(self):
+        return self.__instanced_attribs
 
     @property
     def attributes(self):

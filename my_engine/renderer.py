@@ -8,9 +8,10 @@ from collections import defaultdict
 from OpenGL.GL import glGenBuffers, glBindBuffer, glBufferData, glClearColor, glEnable, glBlendFunc, GL_DEPTH_TEST, \
     GL_BLEND, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ARRAY_BUFFER, GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW, \
     glEnableVertexAttribArray, glVertexAttribPointer, GL_FALSE, GL_FLOAT, GL_SAMPLER_2D, glUniformMatrix4fv, glDrawElements, \
-    GL_TRIANGLES, GL_UNSIGNED_INT, glDrawRangeElements
+    GL_TRIANGLES, GL_UNSIGNED_INT, glDrawRangeElements, glUniform1f, glDrawElementsInstanced, glVertexAttribDivisor, glUseProgram
 import numpy as np
 import ctypes
+import inspect
 
 
 class Renderer(Component):
@@ -85,6 +86,7 @@ class Renderer(Component):
 
         self.__VBO = glGenBuffers(1)
         self.__EBO = glGenBuffers(1)
+        self.__instanceVBO = glGenBuffers(1)
 
         glBindBuffer(GL_ARRAY_BUFFER, self.__VBO)
         glBufferData(GL_ARRAY_BUFFER, self.__vertices.nbytes, self.__vertices, GL_STATIC_DRAW)
@@ -95,13 +97,15 @@ class Renderer(Component):
 
     def update(self):
         for material, data in self.__data_for_render.items():
-            num_of_items = sum(TYPE_TO_LENGTH[type_] for attrib, type_ in material.attributes_types.items())
+            num_of_items = sum(TYPE_TO_LENGTH[type_] for attrib, type_ in material.attributes_types.items() if attrib not in material.instanced_attribs)
             pointer = 0
+            glBindBuffer(GL_ARRAY_BUFFER, self.__VBO)
             for attrib, index in sorted(material.attributes.items(), key=lambda x: x[1]):
-                length = TYPE_TO_LENGTH[material.attributes_types[attrib]]
-                glEnableVertexAttribArray(index)
-                glVertexAttribPointer(index, length, GL_FLOAT, GL_FALSE, self.__vertices.itemsize * num_of_items, ctypes.c_void_p(pointer * 4))
-                pointer += length
+                if attrib not in material.instanced_attribs:
+                    length = TYPE_TO_LENGTH[material.attributes_types[attrib]]
+                    glEnableVertexAttribArray(index)
+                    glVertexAttribPointer(index, length, GL_FLOAT, GL_FALSE, self.__vertices.itemsize * num_of_items, ctypes.c_void_p(pointer * 4))
+                    pointer += length
             material.use_program()
             glUniformMatrix4fv(material.uniforms[material.view_matrix_name], 1, GL_FALSE, self.__active_camera.obj.inverse_matrix)
             glUniformMatrix4fv(material.uniforms[material.projection_matrix_name], 1, GL_FALSE, self.__active_camera.projection)
@@ -119,9 +123,40 @@ class Renderer(Component):
                         pass
                     elif material.projection_matrix_name == uniform:
                         pass
+                    elif uniform in dat['object'].components['Mesh'].uniform_data:
+                        uniform_data = dat['object'].components['Mesh'].uniform_data[uniform]
+                        if callable(uniform_data):
+                            uniform_data = uniform_data()
+                            print(uniform_data)
+                            if type(uniform_data) == int or float:
+                                glUniform1f(index, float(uniform_data))
+                        elif type(uniform_data) == int or float:
+                            glUniform1f(index, float(uniform_data))
+
                 # glDrawElements(GL_TRIANGLES, dat['length'], GL_UNSIGNED_INT, ctypes.c_void_p(dat['pointer'] * 0))
                 flatten_indices = dat['indices']
+                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, self.__EBO)
                 glBufferData(GL_ELEMENT_ARRAY_BUFFER, flatten_indices.nbytes, flatten_indices, GL_STATIC_DRAW)
                 # glDrawElements(GL_TRIANGLES, len(flatten_indices), GL_UNSIGNED_INT, None)
-                glDrawRangeElements(GL_TRIANGLES, dat['pointer'], dat['pointer'] + dat['length'], len(flatten_indices), GL_UNSIGNED_INT, None)
+                mesh = dat['object'].components['Mesh']
+                if len(mesh.instanced_point_data):
+                    instance_data = mesh.get_instanced_data_positioned_to_material(material, flattened=False)
+                    instance_cnt = len(instance_data)
+                    instance_data = instance_data.flatten()
+                    glBindBuffer(GL_ARRAY_BUFFER, self.__instanceVBO)
+                    glBufferData(GL_ARRAY_BUFFER, instance_data.nbytes, instance_data, GL_STATIC_DRAW)
+                    num_of_items = sum(TYPE_TO_LENGTH[material.attributes_types[attrib]] for attrib in material.instanced_attribs)
+                    ptr = 0
+                    for attrib, index in sorted(material.attributes.items(), key=lambda x: x[1]):
+                        if attrib in material.instanced_attribs:
+                            length = TYPE_TO_LENGTH[material.attributes_types[attrib]]
+                            glEnableVertexAttribArray(index)
+                            glVertexAttribPointer(index, length, GL_FLOAT, GL_FALSE, instance_data.itemsize * num_of_items, ctypes.c_void_p(ptr * 4))
+                            glVertexAttribDivisor(index, 1)
+                            ptr += length
+
+                    glDrawElementsInstanced(GL_TRIANGLES, len(flatten_indices), GL_UNSIGNED_INT, None, instance_cnt)
+                else:
+                    glDrawRangeElements(GL_TRIANGLES, dat['pointer'], dat['pointer'] + dat['length'], len(flatten_indices), GL_UNSIGNED_INT, None)
+                # glUseProgram(0)
                 # glDrawRangeElements(GL_TRIANGLES, len(self.__indices), GL_UNSIGNED_INT, None)
