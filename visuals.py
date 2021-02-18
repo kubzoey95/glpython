@@ -8,6 +8,11 @@ from my_engine.texture import Texture
 
 pygame.init()
 pygame.display.set_mode((1280, 720), pygame.OPENGL | pygame.DOUBLEBUF | pygame.RESIZABLE)
+
+depth_buff = glGenRenderbuffers(1)
+glBindRenderbuffer(GL_RENDERBUFFER, depth_buff)
+glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, 1280, 720)
+
 mat = Material("""
 # version 330
 
@@ -22,6 +27,7 @@ uniform float noise_intensity;
 
 out vec2 uv;
 out float intensity;
+out float nois;
 
 const float PHI = 1.61803398874989484820459; // Φ = Golden Ratio 
 
@@ -34,12 +40,14 @@ float gold_noise(in vec2 xy, in float seed)
 void main()
 {   
     // a_texture + 
-    vec2 nois = vec2(a_position.x + (a_position.z * 0.5f), a_position.y + (a_position.z * 0.5f));
-    vec3 rgba = vec3(gold_noise(nois, fract(time)+1.0f), // r
-                gold_noise(nois, fract(time)+2.0f), // g
-                gold_noise(nois, fract(time)+3.0f));
-    gl_Position = projection_matrix * view_matrix * model_matrix * vec4(a_position + (rgba * noise_intensity) , 1.0);
-    intensity = 10.0f/(1.0f + length(gl_Position.xyz));
+    //vec2 nois = vec2(a_position.x + (a_position.z * 0.5f), a_position.y + (a_position.z * 0.5f));
+    //vec3 rgba = vec3(gold_noise(nois, fract(time)+1.0f), // r
+    //            gold_noise(nois, fract(time)+2.0f), // g
+    //            gold_noise(nois, fract(time)+3.0f));
+    //gl_Position = projection_matrix * view_matrix * model_matrix * vec4(a_position + (rgba * noise_intensity) , 1.0);
+    //intensity = 10.0f/(1.0f + length(gl_Position.xyz));
+    gl_Position = vec4(a_position, 1.0);
+    nois = gold_noise(uv, time);
     uv = a_texture;
 }
 """, """
@@ -47,14 +55,14 @@ void main()
 
 in vec2 uv;
 in float intensity;
+in float nois;
 out vec4 out_color;
 
 uniform sampler2D texture;
 
 void main()
 {
-    out_color = texture(texture, uv); // * vec4(v_color, 1.0f);
-    //out_color = vec4(vec3(out_color) * length(out_color - texture(texture, uv + vec2(0.1f, -0.1f))), out_color.w);
+    out_color = vec4(texture(texture, vec2(uv.x, -uv.y) + vec2(0.005, 0.0)).x, texture(texture, vec2(uv.x, -uv.y) + vec2(0.0, 0.005)).y, texture(texture, vec2(uv.x, -uv.y) + vec2(0.005, 0.005)).z, texture(texture, vec2(uv.x, -uv.y)).w); 
 }
 """)
 
@@ -250,13 +258,14 @@ del mesh.point_data_mapping['normals']
 del mesh.point_data['normals']
 
 background = Mesh()
-background.load_from_file("kulken.obj")
+background.load_from_file("screen.obj")
 background.vertices_mapping = 'a_position'
 background.point_data_mapping['uvs'] = 'a_texture'
 background.uniform_data['time'] = 0 #lambda: (time.time() / random.randint(1, 1000)) % 1
 background.uniform_data['noise_intensity'] = 0 # lambda: (math.sin(time.time() * math.pi * 2) + 1) / 2
 del background.point_data_mapping['normals']
 del background.point_data['normals']
+# del background.point_data['a_position']
 
 kotmesh = Mesh()
 kotmesh.load_from_file("lowpoly_tree.obj")
@@ -298,14 +307,54 @@ backtex = Texture()
 backtex.load_from_file('sky_tex.jpg')
 background_obj = GameObject(name='BACKGROUND')
 background_obj.add_component(background)
-background_obj.scale = np.ones(3) * 100
-background_obj.add_component(backtex)
+background_obj.scale = np.ones(3)
+# background_obj.rotation = (0, 0, math.pi/2)
+# background_obj.add_component(backtex)
 background_obj.add_component(mat)
 parent.add_child(background_obj)
 
 cam_obj = GameObject()
 cam = Camera(cam_obj)
+cam.objects = [background_obj]
 cam_obj.translation = (0, 2, 20)
+
+# texture = glGenTextures(1)
+# glBindTexture(GL_TEXTURE_2D, texture)
+# texture wrapping params
+# glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
+# glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
+# # texture filtering params
+# glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+# glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+# glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1280, 720, 0, GL_RGBA, GL_UNSIGNED_BYTE, None)
+# glBindTexture(GL_TEXTURE_2D, 0)
+
+# depth_buff = glGenRenderbuffers(1)
+# glBindRenderbuffer(GL_RENDERBUFFER, depth_buff)
+# glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, 1280, 720)
+
+FBO = glGenFramebuffers(1)
+# glBindFramebuffer(GL_FRAMEBUFFER, FBO)
+# glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0)
+# glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth_buff)
+# glBindFramebuffer(GL_FRAMEBUFFER, 0)
+
+framebuffer_texture = Texture(texture=glGenTextures(1), dont_send=True)
+framebuffer_texture.bind_texture()
+glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1280, 720, 0, GL_RGBA, GL_UNSIGNED_BYTE, None)
+framebuffer_texture.bind_default_texture()
+
+depth_buff = glGenRenderbuffers(1)
+glBindRenderbuffer(GL_RENDERBUFFER, depth_buff)
+glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, 1280, 720)
+
+framebuffer_texture.bind_to_frame_depth_buffer(FBO, depth_buff)
+
+background_obj.add_component(framebuffer_texture)
+
+cam_obj1 = GameObject(name='cam1')
+cam_obj1.translation = (0, 2, 20)
+cam1 = Camera(cam_obj1, frame_buffer=FBO, depth_buffer=depth_buff)
 from my_engine.renderer import Renderer
 
 kotek = GameObject()
@@ -320,12 +369,18 @@ kotek.scale = (3,3,3)
 # parent.add_child(cam_obj)
 
 # parent.add_child(kotek)
-render = Renderer(parent, cam)
+render = Renderer(parent, [cam1, cam])
 obj1 = GameObject()
 obj1.add_component(mesh1)
 obj1.add_component(plane_mat)
 obj1.scale = tuple(np.array(obj1.scale) / 5)
 obj.scale = tuple(np.array(obj.scale) * 0.2)
+
+cam1.objects = [obj1]
+cam.start()
+cam1.start()
+
+
 parent.add_child(obj1)
 obj.translation = (0., 0, 0)
 # obj1.translation = (0., 0., -10.)
@@ -345,7 +400,7 @@ obj.add_component(kottex)
 obj1.add_component(tex1)
 obj2.add_component(tex)
 render.start()
-render.update()
+# render.update()
 running = True
 import time
 from threading import Thread
@@ -363,24 +418,26 @@ def funn():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        # glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         # obj1.translation -= np.array([0., 0., rate]) #obj1.translation[0], obj1.translation[1], obj1.translation[2] - rate)
         # obj1.rotation -= np.array([0., 0., rate])
         x = np.array([random.uniform(-0.1, 0.5), 0 ,random.uniform(-0.1, 0.5)]) / 10
         obj1.translation += x
         cam_obj.translation += x
+        cam_obj1.translation = cam_obj.translation
+        cam_obj1.rotation = cam_obj.rotation
         background_obj.translation += x
         # random_rot = np.random.rand(3)
         # obj.rotation -= random_rot * rate / np.sum(random_rot)
         render.update()
         pygame.display.flip()
+        render.update()
         # print(1/max(rate, 0.00001))
         mesh1_noise_intens -= rate * 10
         time.sleep(0.0001)
 
 
 if __name__ == '__main__':
-    input()
     s = Server(winhost='mme').boot()
     s.start()
 
