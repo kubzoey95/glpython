@@ -350,6 +350,12 @@ glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, 1280, 720)
 
 framebuffer_texture.bind_to_frame_depth_buffer(FBO, depth_buff)
 
+background.uniform_data['texture'] = framebuffer_texture
+
+# kitittex = Texture()
+# kitittex.load_from_file('kiti.png')
+# background.uniform_data['texture0'] = kitittex
+
 background_obj.add_component(framebuffer_texture)
 
 cam_obj1 = GameObject(name='cam1')

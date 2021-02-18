@@ -9,7 +9,7 @@ from OpenGL.GL import glGenBuffers, glBindBuffer, glBufferData, glClearColor, gl
     GL_BLEND, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ARRAY_BUFFER, GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW, \
     glEnableVertexAttribArray, glVertexAttribPointer, GL_FALSE, GL_FLOAT, GL_SAMPLER_2D, glUniformMatrix4fv, glDrawElements, \
     GL_TRIANGLES, GL_UNSIGNED_INT, glDrawRangeElements, glUniform1f, glDrawElementsInstanced, glVertexAttribDivisor, glUseProgram, \
-    glClear, GL_COLOR_BUFFER_BIT, GL_DEPTH_BUFFER_BIT
+    glClear, GL_COLOR_BUFFER_BIT, GL_DEPTH_BUFFER_BIT, GL_TEXTURE0, glActiveTexture, glUniform1i, glBindTexture, GL_TEXTURE_2D, GLuint
 import numpy as np
 import ctypes
 from typing import List
@@ -110,16 +110,49 @@ class Renderer(Component):
                 if material.projection_matrix_name in material.uniforms:
                     glUniformMatrix4fv(material.uniforms[material.projection_matrix_name], 1, GL_FALSE, camera.projection)
                 for dat in data:
+                    sampler_id = 0
                     for uniform, index in material.uniforms.items():
                         if material.uniforms_types[uniform] == GL_SAMPLER_2D:
-                            if 'Texture' in dat['object'].components:
+                            if uniform in dat['object'].components['Mesh'].uniform_data:
+                                unif_dat = dat['object'].components['Mesh'].uniform_data[uniform]
+                                if callable(unif_dat):
+                                    unif_dat = unif_dat()
+                                    texture = unif_dat
+                                    glUniform1i(index, sampler_id)
+                                    glActiveTexture(GL_TEXTURE0 + sampler_id)
+                                    texture.bind_texture()
+
+                                    texture.load_settings()
+                                    if texture.default_texture == texture.texture:
+                                        texture.send_texture()
+                                    # if type(unif_dat) == int:
+                                    #     glUniform1i(index, sampler_id)
+                                    # glActiveTexture(GL_TEXTURE0 + sampler_id)
+                                    # glBindTexture(GL_TEXTURE_2D, unif_dat)
+                                else:
+                                    texture = unif_dat
+                                    glUniform1i(index, sampler_id)
+                                    glActiveTexture(GL_TEXTURE0 + sampler_id)
+                                    texture.bind_texture()
+
+                                    texture.load_settings()
+                                    if texture.default_texture == texture.texture:
+                                        texture.send_texture()
+                                    # glUniform1i(index, sampler_id)
+                                    # glActiveTexture(GL_TEXTURE0 + sampler_id)
+                                    # glBindTexture(GL_TEXTURE_2D, unif_dat)
+                            elif 'Texture' in dat['object'].components:
+                                # location = material.uniforms[uniform]
                                 texture = dat['object'].components['Texture']
+                                glUniform1i(index, sampler_id)
+                                glActiveTexture(GL_TEXTURE0 + sampler_id)
                                 texture.bind_texture()
 
                                 texture.load_settings()
                                 if texture.default_texture == texture.texture:
                                     texture.send_texture()
                                 # texture.bind_default_texture()
+                            sampler_id += 1
                         elif material.model_matrix_name == uniform:
                             glUniformMatrix4fv(index, 1, GL_FALSE, dat['object'].transformation_matrix)
                         elif material.view_matrix_name == uniform:

@@ -4,7 +4,7 @@ import pygame
 from OpenGL.GL import glTexImage2D, glGenTextures, glBindTexture, glTexParameteri, GL_TEXTURE_2D, GL_RGBA, \
     GL_UNSIGNED_BYTE, GL_TEXTURE_WRAP_S, GL_REPEAT, GL_TEXTURE_WRAP_T, GL_TEXTURE_MIN_FILTER, GL_TEXTURE_MAG_FILTER, \
     GL_LINEAR, glBindFramebuffer, glFramebufferTexture2D, GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, glFramebufferRenderbuffer, \
-    GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER
+    GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, glActiveTexture, GL_TEXTURE0
 
 
 class Texture(Component):
@@ -54,6 +54,7 @@ class Texture(Component):
             return self.__texture
 
     def bind_texture(self):
+        # glActiveTexture(GL_TEXTURE0 + self.texture)
         glBindTexture(GL_TEXTURE_2D, self.texture)
 
     @texture.setter
