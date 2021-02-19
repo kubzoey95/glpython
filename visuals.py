@@ -59,10 +59,18 @@ in float nois;
 out vec4 out_color;
 
 uniform sampler2D texture;
+uniform sampler2D texture_kiti;
+uniform sampler2D texture_kat;
 
 void main()
 {
     out_color = vec4(texture(texture, vec2(uv.x, -uv.y) + vec2(0.005, 0.0)).x, texture(texture, vec2(uv.x, -uv.y) + vec2(0.0, 0.005)).y, texture(texture, vec2(uv.x, -uv.y) + vec2(0.005, 0.005)).z, texture(texture, vec2(uv.x, -uv.y)).w); 
+    if (uv.x < 0.5){
+        out_color *= texture(texture_kiti, uv);
+    }
+    else{
+        out_color *= texture(texture_kat, uv);
+    }
 }
 """)
 
@@ -318,26 +326,7 @@ cam = Camera(cam_obj)
 cam.objects = [background_obj]
 cam_obj.translation = (0, 2, 20)
 
-# texture = glGenTextures(1)
-# glBindTexture(GL_TEXTURE_2D, texture)
-# texture wrapping params
-# glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
-# glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
-# # texture filtering params
-# glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-# glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-# glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1280, 720, 0, GL_RGBA, GL_UNSIGNED_BYTE, None)
-# glBindTexture(GL_TEXTURE_2D, 0)
-
-# depth_buff = glGenRenderbuffers(1)
-# glBindRenderbuffer(GL_RENDERBUFFER, depth_buff)
-# glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, 1280, 720)
-
 FBO = glGenFramebuffers(1)
-# glBindFramebuffer(GL_FRAMEBUFFER, FBO)
-# glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0)
-# glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth_buff)
-# glBindFramebuffer(GL_FRAMEBUFFER, 0)
 
 framebuffer_texture = Texture(texture=glGenTextures(1), dont_send=True)
 framebuffer_texture.bind_texture()
@@ -352,11 +341,18 @@ framebuffer_texture.bind_to_frame_depth_buffer(FBO, depth_buff)
 
 background.uniform_data['texture'] = framebuffer_texture
 
-# kitittex = Texture()
-# kitittex.load_from_file('kiti.png')
-# background.uniform_data['texture0'] = kitittex
+kitittex = Texture(texture=glGenTextures(1))
+kitittex.load_from_file('kiti.png')
+kitittex.send_texture()
+background.uniform_data['texture_kiti'] = kitittex
 
-background_obj.add_component(framebuffer_texture)
+kitittex1 = Texture(texture=glGenTextures(1))
+kitittex1.load_from_file('cat.png')
+kitittex1.send_texture()
+background.uniform_data['texture_kat'] = kitittex1
+
+
+# background_obj.add_component(framebuffer_texture)
 
 cam_obj1 = GameObject(name='cam1')
 cam_obj1.translation = (0, 2, 20)

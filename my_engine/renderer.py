@@ -117,27 +117,25 @@ class Renderer(Component):
                                 unif_dat = dat['object'].components['Mesh'].uniform_data[uniform]
                                 if callable(unif_dat):
                                     unif_dat = unif_dat()
-                                    texture = unif_dat
                                     glUniform1i(index, sampler_id)
                                     glActiveTexture(GL_TEXTURE0 + sampler_id)
-                                    texture.bind_texture()
+                                    unif_dat.bind_texture()
 
-                                    texture.load_settings()
-                                    if texture.default_texture == texture.texture:
-                                        texture.send_texture()
+                                    unif_dat.load_settings()
+                                    if unif_dat.default_texture == unif_dat.texture:
+                                        unif_dat.send_texture()
                                     # if type(unif_dat) == int:
                                     #     glUniform1i(index, sampler_id)
                                     # glActiveTexture(GL_TEXTURE0 + sampler_id)
                                     # glBindTexture(GL_TEXTURE_2D, unif_dat)
                                 else:
-                                    texture = unif_dat
                                     glUniform1i(index, sampler_id)
                                     glActiveTexture(GL_TEXTURE0 + sampler_id)
-                                    texture.bind_texture()
+                                    unif_dat.bind_texture()
 
-                                    texture.load_settings()
-                                    if texture.default_texture == texture.texture:
-                                        texture.send_texture()
+                                    unif_dat.load_settings()
+                                    if unif_dat.default_texture == unif_dat.texture:
+                                        unif_dat.send_texture()
                                     # glUniform1i(index, sampler_id)
                                     # glActiveTexture(GL_TEXTURE0 + sampler_id)
                                     # glBindTexture(GL_TEXTURE_2D, unif_dat)

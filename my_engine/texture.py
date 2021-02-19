@@ -62,6 +62,7 @@ class Texture(Component):
         self.__texture = val
 
     def send_texture(self):
+        self.bind_texture()
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, self.__image_width, self.__image_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, self.__img_data)
 
     def send_img_data(self, img_data=None, width=1280, height=720):
