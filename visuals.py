@@ -59,18 +59,44 @@ in float nois;
 out vec4 out_color;
 
 uniform sampler2D texture;
-uniform sampler2D texture_kiti;
-uniform sampler2D texture_kat;
+//uniform sampler2D texture_kiti;
+//uniform sampler2D texture_kat;
+
+mat3 sx = mat3( 
+    1.0, 2.0, 1.0, 
+    0.0, 0.0, 0.0, 
+   -1.0, -2.0, -1.0 
+);
+mat3 sy = mat3( 
+    1.0, 0.0, -1.0, 
+    2.0, 0.0, -2.0, 
+    1.0, 0.0, -1.0 
+);
 
 void main()
 {
-    out_color = vec4(texture(texture, vec2(uv.x, -uv.y) + vec2(0.005, 0.0)).x, texture(texture, vec2(uv.x, -uv.y) + vec2(0.0, 0.005)).y, texture(texture, vec2(uv.x, -uv.y) + vec2(0.005, 0.005)).z, texture(texture, vec2(uv.x, -uv.y)).w); 
-    if (uv.x < 0.5){
-        out_color *= texture(texture_kiti, uv);
+    //out_color = vec4(texture(texture, vec2(uv.x, -uv.y) + vec2(0.005, 0.0)).x, texture(texture, vec2(uv.x, -uv.y) + vec2(0.0, 0.005)).y, texture(texture, vec2(uv.x, -uv.y) + vec2(0.005, 0.005)).z, texture(texture, vec2(uv.x, -uv.y)).w); 
+    out_color = texture(texture, vec2(uv.x, -uv.y));
+    mat3 I;
+    for (int i=0; i<3; i++) {
+        for (int j=0; j<3; j++) {
+            vec3 sample  = texelFetch(texture, ivec2(uv.x * 1280.0, (1-uv.y) * 720.0) + ivec2(i-1,j-1), 0 ).xyz;
+            I[i][j] = length(sample); 
+        }
     }
-    else{
-        out_color *= texture(texture_kat, uv);
-    }
+    float gx = dot(sx[0], I[0]) + dot(sx[1], I[1]) + dot(sx[2], I[2]); 
+    float gy = dot(sy[0], I[0]) + dot(sy[1], I[1]) + dot(sy[2], I[2]);
+    float res = sqrt(gx * gx + gy * gy);
+    //out_color.xyz = vec3(res);
+    float is_bigger = float(res > 0.9);
+    out_color.xyz -= vec3(is_bigger);
+    //out_color.xyz = is_bigger * (out_color.xyz / res) + (1.0 - is_bigger) * out_color.xyz;
+    //if (uv.x < 0.5){
+    //    out_color *= texture(texture_kiti, uv);
+    //}
+    //else{
+    //    out_color *= texture(texture_kat, uv);
+    //}
 }
 """)
 
@@ -248,6 +274,7 @@ uniform sampler2D texture;
 void main()
 {
     out_color = texture(texture, uv * 2.0); // * vec4(v_color, 1.0f);
+    out_color.xyz /= (gl_FragCoord.z/gl_FragCoord.w + 1.0)/10.0;
     //out_color.xyz *= intensity;
     // out_color = vec4(vec3(out_color) * intensity, out_color.w);
     //out_color = vec4(vec3(out_color) * length(out_color - texture(texture, uv + vec2(0.1f, -0.1f))), out_color.w);
@@ -341,15 +368,15 @@ framebuffer_texture.bind_to_frame_depth_buffer(FBO, depth_buff)
 
 background.uniform_data['texture'] = framebuffer_texture
 
-kitittex = Texture(texture=glGenTextures(1))
-kitittex.load_from_file('kiti.png')
-kitittex.send_texture()
-background.uniform_data['texture_kiti'] = kitittex
-
-kitittex1 = Texture(texture=glGenTextures(1))
-kitittex1.load_from_file('cat.png')
-kitittex1.send_texture()
-background.uniform_data['texture_kat'] = kitittex1
+# kitittex = Texture(texture=glGenTextures(1))
+# kitittex.load_from_file('kiti.png')
+# kitittex.send_texture()
+# background.uniform_data['texture_kiti'] = kitittex
+#
+# kitittex1 = Texture(texture=glGenTextures(1))
+# kitittex1.load_from_file('cat.png')
+# kitittex1.send_texture()
+# background.uniform_data['texture_kat'] = kitittex1
 
 
 # background_obj.add_component(framebuffer_texture)
